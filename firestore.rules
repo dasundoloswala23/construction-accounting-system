@@ -1,0 +1,180 @@
+rules_version = '2';
+
+// Waterman Construction ERP — Firestore Security Rules
+//
+// Role model: role is stored as a Firebase Auth custom claim (request.auth.token.role),
+// set by the `createUser` Cloud Function, and mirrored into users/{uid} for display only.
+// Rules read the claim (not a users/ doc lookup) so checks are synchronous and cheap.
+//
+// Derived/aggregate fields (outstandingAmount, receivedAmount, currentBalance,
+// outstandingBalance, spentToDate, totalPaidAllTime) are only ever written by
+// Cloud Functions via the Admin SDK, which bypasses these rules entirely. Client
+// updates to the parent documents are explicitly blocked from touching those keys
+// below via `diff(...).affectedKeys().hasAny([...])` checks, even for roles that
+// can otherwise edit the rest of the document.
+//
+// This file is extended incrementally as each module is built; see the build plan's
+// "Hardening pass" step for the final full audit across all collections/roles.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function role() {
+      return request.auth.token.role;
+    }
+    function isAdmin() {
+      return isSignedIn() && role() == 'admin';
+    }
+    function isAccountant() {
+      return isSignedIn() && role() == 'accountant';
+    }
+    function isManager() {
+      return isSignedIn() && role() == 'manager';
+    }
+    function isFinance() {
+      return isAdmin() || isAccountant();
+    }
+    function unchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // --- Company / users -----------------------------------------------
+    match /companies/{companyId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == uid && unchanged(['role', 'active']));
+    }
+
+    match /counters/{name} {
+      // Only Cloud Functions (Admin SDK) touch sequence counters.
+      allow read, write: if false;
+    }
+
+    // --- Reference data ---------------------------------------------------
+    match /suppliers/{id} {
+      allow read: if isSignedIn();
+      allow create: if isFinance();
+      allow update: if isFinance() && unchanged(['outstandingBalance']);
+      allow delete: if isAdmin();
+    }
+
+    match /products/{id} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    match /construction_sites/{id} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || isManager();
+      allow update: if (isAdmin() || isManager()) && unchanged(['spentToDate']);
+      allow delete: if isAdmin();
+    }
+
+    // --- Quotations / Pipeline / Outstanding -------------------------------
+    match /quotations/{id} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    match /projects/{id} {
+      allow read: if isSignedIn();
+      allow create: if isFinance();
+      allow update: if isFinance() && unchanged(['receivedAmount', 'outstandingAmount', 'overdueAmount']);
+      allow delete: if isAdmin();
+    }
+
+    match /project_payments/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    match /project_documents/{id} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    match /receipts/{id} {
+      allow read: if isSignedIn();
+      allow create: if isFinance();
+      allow update, delete: if isAdmin();
+    }
+
+    match /timeline/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // immutable audit log
+      allow delete: if isAdmin();
+    }
+
+    // --- Purchase Orders / Suppliers side ----------------------------------
+    match /purchase_orders/{id} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    match /vat_invoices/{id} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    // --- Bank / cheques -----------------------------------------------------
+    match /bank_accounts/{id} {
+      allow read: if isSignedIn();
+      allow create: if isFinance();
+      allow update: if isFinance() && unchanged(['currentBalance']);
+      allow delete: if isAdmin();
+    }
+
+    match /bank_transactions/{id} {
+      allow read: if isSignedIn();
+      allow create: if isFinance();
+      allow update, delete: if isAdmin();
+    }
+
+    match /cheques/{id} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+      allow delete: if isAdmin();
+    }
+
+    // --- Labour --------------------------------------------------------------
+    match /labour/{id} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || isManager();
+      allow update: if (isAdmin() || isManager()) && unchanged(['outstandingBalance', 'totalPaidAllTime']);
+      allow delete: if isAdmin();
+    }
+
+    match /labour_payments/{id} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || isManager() || isAccountant();
+      allow update, delete: if isAdmin();
+    }
+
+    // --- Notifications ---------------------------------------------------------
+    match /notifications/{id} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isSignedIn() && unchanged(['type', 'title', 'description', 'amount', 'refType', 'refId', 'createdAt']);
+    }
+
+    // Deny anything not explicitly matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

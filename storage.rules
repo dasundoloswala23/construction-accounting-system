@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Waterman Construction ERP — Storage Security Rules
+// Mirrors the Firestore role model (custom claim `role` on the auth token).
+// Paths are scoped by owning entity so rules stay simple as modules are added.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function role() {
+      return request.auth.token.role;
+    }
+    function isFinance() {
+      return isSignedIn() && (role() == 'admin' || role() == 'accountant');
+    }
+    function isAdmin() {
+      return isSignedIn() && role() == 'admin';
+    }
+
+    match /company/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /quotations/{quotationId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+    }
+
+    match /projects/{projectId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+    }
+
+    match /suppliers/{supplierId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isFinance();
+    }
+
+    match /users/{uid}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Deny anything not explicitly matched above.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment / Firebase
+.env
+.env.*.local
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+functions/lib
+functions/node_modules
+
+# Ad hoc local Playwright verification scripts (not part of the app)
+scripts/_verify-*.mjs
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
