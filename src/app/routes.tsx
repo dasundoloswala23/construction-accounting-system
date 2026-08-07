@@ -5,6 +5,9 @@ import { RequireModule } from './RequireModule'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { ProductsPage } from '@/features/products/ProductsPage'
+import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
+import { ConstructionSitesPage } from '@/features/construction-sites/ConstructionSitesPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -39,9 +42,30 @@ export function AppRoutes() {
         />
         <Route path="/business-pipeline/*" element={<Placeholder title="Business Pipeline & Quotations" moduleKey="businessPipeline" />} />
         <Route path="/purchase-orders" element={<Placeholder title="Purchase Orders" moduleKey="purchaseOrders" />} />
-        <Route path="/suppliers" element={<Placeholder title="Supplier Management" moduleKey="supplierManagement" />} />
-        <Route path="/products" element={<Placeholder title="Products" moduleKey="products" />} />
-        <Route path="/construction-sites" element={<Placeholder title="Construction Sites" moduleKey="constructionSites" />} />
+        <Route
+          path="/suppliers"
+          element={
+            <RequireModule moduleKey="supplierManagement">
+              <SuppliersPage />
+            </RequireModule>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <RequireModule moduleKey="products">
+              <ProductsPage />
+            </RequireModule>
+          }
+        />
+        <Route
+          path="/construction-sites"
+          element={
+            <RequireModule moduleKey="constructionSites">
+              <ConstructionSitesPage />
+            </RequireModule>
+          }
+        />
         <Route path="/income" element={<Placeholder title="Income" moduleKey="income" />} />
         <Route path="/bank-accounts" element={<Placeholder title="Bank Accounts" moduleKey="bankAccounts" />} />
         <Route path="/labour" element={<Placeholder title="Labour Management" moduleKey="labourManagement" />} />
