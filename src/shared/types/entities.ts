@@ -163,6 +163,7 @@ export type ProjectStatus = 'active' | 'completed'
 export interface Project {
   quotationId: string
   quotationNumber: string
+  projectName: string
   poNumber?: string
   constructionSiteId?: string
   customer: QuotationCustomer

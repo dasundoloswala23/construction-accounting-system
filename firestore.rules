@@ -54,8 +54,10 @@ service cloud.firestore {
     }
 
     match /counters/{name} {
-      // Only Cloud Functions (Admin SDK) touch sequence counters.
-      allow read, write: if false;
+      // Sequence numbers (quotation/PO/receipt) are display references, not
+      // money-bearing derived fields, so a transactional client write is an
+      // acceptable trust boundary here (unlike outstandingAmount etc. below).
+      allow read, write: if isFinance();
     }
 
     // --- Reference data ---------------------------------------------------
