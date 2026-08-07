@@ -3,6 +3,8 @@ import { AppLayout } from './AppLayout'
 import { ProtectedRoute } from './ProtectedRoute'
 import { RequireModule } from './RequireModule'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -27,7 +29,14 @@ export function AppRoutes() {
         }
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Placeholder title="Dashboard" moduleKey="dashboard" />} />
+        <Route
+          path="/dashboard"
+          element={
+            <RequireModule moduleKey="dashboard">
+              <DashboardPage />
+            </RequireModule>
+          }
+        />
         <Route path="/business-pipeline/*" element={<Placeholder title="Business Pipeline & Quotations" moduleKey="businessPipeline" />} />
         <Route path="/purchase-orders" element={<Placeholder title="Purchase Orders" moduleKey="purchaseOrders" />} />
         <Route path="/suppliers" element={<Placeholder title="Supplier Management" moduleKey="supplierManagement" />} />
@@ -42,7 +51,14 @@ export function AppRoutes() {
         <Route path="/vat-suppliers" element={<Placeholder title="VAT Suppliers" moduleKey="vatSuppliers" />} />
         <Route path="/notifications" element={<Placeholder title="Notifications" moduleKey="notifications" />} />
         <Route path="/reports" element={<Placeholder title="Reports & Analytics" moduleKey="reports" />} />
-        <Route path="/settings/*" element={<Placeholder title="Settings" moduleKey="settings" />} />
+        <Route
+          path="/settings/*"
+          element={
+            <RequireModule moduleKey="settings">
+              <SettingsPage />
+            </RequireModule>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
