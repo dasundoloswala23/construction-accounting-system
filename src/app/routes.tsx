@@ -8,6 +8,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ProductsPage } from '@/features/products/ProductsPage'
 import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { ConstructionSitesPage } from '@/features/construction-sites/ConstructionSitesPage'
+import { BankAccountsPage } from '@/features/bank-accounts/BankAccountsPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -67,7 +68,14 @@ export function AppRoutes() {
           }
         />
         <Route path="/income" element={<Placeholder title="Income" moduleKey="income" />} />
-        <Route path="/bank-accounts" element={<Placeholder title="Bank Accounts" moduleKey="bankAccounts" />} />
+        <Route
+          path="/bank-accounts"
+          element={
+            <RequireModule moduleKey="bankAccounts">
+              <BankAccountsPage />
+            </RequireModule>
+          }
+        />
         <Route path="/labour" element={<Placeholder title="Labour Management" moduleKey="labourManagement" />} />
         <Route path="/outstanding/*" element={<Placeholder title="Outstanding" moduleKey="outstanding" />} />
         <Route path="/debtors" element={<Placeholder title="Debtors" moduleKey="debtors" />} />
