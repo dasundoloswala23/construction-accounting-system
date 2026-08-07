@@ -14,12 +14,17 @@ dist-ssr
 
 # Environment / Firebase
 .env
+.env.production
 .env.*.local
 firebase-debug.log
 firebase-debug.*.log
 .firebase/
 functions/lib
 functions/node_modules
+
+# Service account keys (never commit these)
+*serviceAccount*.json
+*service-account*.json
 
 # Ad hoc local Playwright verification scripts (not part of the app)
 scripts/_verify-*.mjs
