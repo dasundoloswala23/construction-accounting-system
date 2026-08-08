@@ -16,7 +16,8 @@ export interface POFormInput {
   chequeNumber?: string
   chequeDate?: string
   chequeDueDate?: string
-  chequeBank?: string
+  chequeBankAccountId?: string
+  chequeBankName?: string
 }
 
 function computeTotals(lineItems: PurchaseOrderLineItem[], vatEnabled: boolean, vatPercent: number) {
@@ -56,7 +57,8 @@ export async function createPurchaseOrder(input: POFormInput, createdBy: string,
       sourceType: 'purchase_order',
       sourceRef: poRef.id,
       party: input.supplierName,
-      bank: input.chequeBank ?? '',
+      bank: input.chequeBankName ?? '',
+      bankAccountId: input.chequeBankAccountId ?? '',
       chequeNumber: input.chequeNumber,
       chequeDate: Timestamp.fromDate(new Date(input.chequeDate || input.date)),
       dueDate: Timestamp.fromDate(new Date(input.chequeDueDate || input.date)),

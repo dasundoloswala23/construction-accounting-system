@@ -7,6 +7,30 @@
         { "fieldPath": "bankAccountId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "project_payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "project_documents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timeline",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -53,7 +53,7 @@ export function QuotationWizardPage() {
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, appUser } = useAuth()
   const { data: existing, loading: loadingExisting } = useDocument<Quotation>(isEdit ? `quotations/${id}` : null)
 
   const [activeTab, setActiveTab] = useState('project')
@@ -103,11 +103,12 @@ export function QuotationWizardPage() {
       toast.error(parsed.error.issues[0]?.message ?? 'Please check the form for errors')
       return
     }
+    const actor = { uid: user?.uid ?? '', name: appUser?.displayName ?? 'Unknown' }
     try {
       if (isEdit) {
-        await updateQuotation(id!, values, status, user?.uid ?? '', documents)
+        await updateQuotation(id!, values, status, actor, documents)
       } else {
-        await createQuotation(values, status, user?.uid ?? '', documents)
+        await createQuotation(values, status, actor, documents)
       }
       toast.success(status === 'submitted' ? 'Quotation submitted' : 'Draft saved')
       navigate('/business-pipeline')

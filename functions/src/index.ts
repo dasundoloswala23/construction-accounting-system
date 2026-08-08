@@ -1,12 +1,15 @@
-import { initializeApp } from 'firebase-admin/app'
-import { getAuth } from 'firebase-admin/auth'
-import { getFirestore, Timestamp } from 'firebase-admin/firestore'
+import { Timestamp } from 'firebase-admin/firestore'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
+import { auth, db } from './admin.js'
 
-initializeApp()
-
-const auth = getAuth()
-const db = getFirestore()
+export {
+  onProjectPaymentWrite,
+  onChequeStatusChange,
+  onBankTransactionWrite,
+  onPurchaseOrderWrite,
+  onLabourPaymentWrite,
+  scanOverdue,
+} from './triggers.js'
 
 type Role = 'admin' | 'accountant' | 'manager'
 

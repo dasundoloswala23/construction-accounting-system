@@ -1,11 +1,16 @@
 import { addDoc, collection, deleteDoc, doc, updateDoc, Timestamp, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/shared/lib/firebase'
 import { nextFormattedNumber } from '@/shared/lib/sequence'
+import { logTimelineEvent } from '@/shared/lib/timeline'
 import type { Quotation, QuotationDocument, Project, PipelineStage } from '@/shared/types/entities'
 import { PIPELINE_STAGES } from '@/shared/types/entities'
 import { computePricing, type QuotationFormValues } from './schema'
 
 export type QuotationStatus = Quotation['status']
+export interface Actor {
+  uid: string
+  name: string
+}
 
 function toQuotationDoc(values: QuotationFormValues, status: QuotationStatus, quotationNumber: string, createdBy: string) {
   const pricing = computePricing(values)
@@ -46,10 +51,11 @@ function toQuotationDoc(values: QuotationFormValues, status: QuotationStatus, qu
   }
 }
 
-export async function createQuotation(values: QuotationFormValues, status: QuotationStatus, createdBy: string, documents: QuotationDocument[] = []) {
+export async function createQuotation(values: QuotationFormValues, status: QuotationStatus, actor: Actor, documents: QuotationDocument[] = []) {
   const quotationNumber = await nextFormattedNumber('quotation', 'QTN')
-  const payload = { ...toQuotationDoc(values, status, quotationNumber, createdBy), documents, createdAt: serverTimestamp() }
+  const payload = { ...toQuotationDoc(values, status, quotationNumber, actor.uid), documents, createdAt: serverTimestamp() }
   const ref = await addDoc(collection(db, 'quotations'), payload)
+  await logTimelineEvent(ref.id, status === 'submitted' ? 'submitted' : 'quotation_created', actor.uid, actor.name, { quotationNumber })
   return ref.id
 }
 
@@ -57,30 +63,35 @@ export async function updateQuotation(
   id: string,
   values: QuotationFormValues,
   status: QuotationStatus,
-  createdBy: string,
+  actor: Actor,
   documents: QuotationDocument[]
 ) {
   const existing = await getDoc(doc(db, 'quotations', id))
   const quotationNumber = existing.data()?.quotationNumber ?? (await nextFormattedNumber('quotation', 'QTN'))
-  const payload = { ...toQuotationDoc(values, status, quotationNumber, createdBy), documents }
+  const payload = { ...toQuotationDoc(values, status, quotationNumber, actor.uid), documents }
   await updateDoc(doc(db, 'quotations', id), payload)
+  if (status === 'submitted' && existing.data()?.status !== 'submitted') {
+    await logTimelineEvent(id, 'submitted', actor.uid, actor.name, { quotationNumber })
+  }
 }
 
 export function deleteQuotation(id: string) {
   return deleteDoc(doc(db, 'quotations', id))
 }
 
-export function submitQuotation(id: string) {
-  return updateDoc(doc(db, 'quotations', id), { status: 'submitted', updatedAt: serverTimestamp() })
+export async function submitQuotation(id: string, actor: Actor) {
+  await updateDoc(doc(db, 'quotations', id), { status: 'submitted', updatedAt: serverTimestamp() })
+  await logTimelineEvent(id, 'submitted', actor.uid, actor.name)
 }
 
-export function rejectQuotation(id: string) {
-  return updateDoc(doc(db, 'quotations', id), { status: 'rejected', updatedAt: serverTimestamp() })
+export async function rejectQuotation(id: string, actor: Actor) {
+  await updateDoc(doc(db, 'quotations', id), { status: 'rejected', updatedAt: serverTimestamp() })
+  await logTimelineEvent(id, 'rejected', actor.uid, actor.name)
 }
 
 /** Approves the quotation and spawns the shared `projects` entity that the
  * Outstanding module and the rest of the pipeline board read/write from here on. */
-export async function approveQuotation(quotationId: string) {
+export async function approveQuotation(quotationId: string, actor: Actor) {
   const snap = await getDoc(doc(db, 'quotations', quotationId))
   const quotation = snap.data() as Quotation | undefined
   if (!quotation) throw new Error('Quotation not found')
@@ -107,6 +118,7 @@ export async function approveQuotation(quotationId: string) {
     updatedAt: Timestamp.now(),
   }
   const ref = await addDoc(collection(db, 'projects'), project)
+  await logTimelineEvent(ref.id, 'approved', actor.uid, actor.name, { quotationNumber: quotation.quotationNumber })
   return ref.id
 }
 
@@ -117,14 +129,16 @@ export function nextPipelineStage(current: PipelineStage): PipelineStage | null 
   return idx >= 0 && idx < STAGE_ORDER.length - 1 ? STAGE_ORDER[idx + 1] : null
 }
 
-export function advanceProjectStage(projectId: string, toStage: PipelineStage) {
-  return updateDoc(doc(db, 'projects', projectId), { pipelineStage: toStage, updatedAt: serverTimestamp() })
+export async function advanceProjectStage(projectId: string, toStage: PipelineStage, actor: Actor) {
+  await updateDoc(doc(db, 'projects', projectId), { pipelineStage: toStage, updatedAt: serverTimestamp() })
+  if (toStage === 'po_received') await logTimelineEvent(projectId, 'po_uploaded', actor.uid, actor.name)
 }
 
 export function setProjectPoNumber(projectId: string, poNumber: string) {
   return updateDoc(doc(db, 'projects', projectId), { poNumber, updatedAt: serverTimestamp() })
 }
 
-export function closeProject(projectId: string) {
-  return updateDoc(doc(db, 'projects', projectId), { status: 'completed', closedAt: serverTimestamp(), updatedAt: serverTimestamp() })
+export async function closeProject(projectId: string, actor: Actor) {
+  await updateDoc(doc(db, 'projects', projectId), { status: 'completed', closedAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  await logTimelineEvent(projectId, 'project_closed', actor.uid, actor.name)
 }

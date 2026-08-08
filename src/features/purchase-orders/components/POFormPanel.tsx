@@ -6,7 +6,7 @@ import { orderBy } from 'firebase/firestore'
 import { SidePanel, Button } from '@/shared/components'
 import { SelectField, CheckboxField, TextField, inputBaseClass } from '@/shared/components/form'
 import { useCollection } from '@/shared/hooks/useCollection'
-import type { Supplier, ConstructionSite } from '@/shared/types/entities'
+import type { Supplier, ConstructionSite, BankAccount } from '@/shared/types/entities'
 import { formatCurrency } from '@/shared/lib/currency'
 import { todayInputValue } from '@/shared/lib/dates'
 import { useAuth } from '@/app/providers/AuthProvider'
@@ -39,6 +39,7 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
   const { user } = useAuth()
   const { data: suppliers } = useCollection<Supplier>('suppliers', [orderBy('companyName')])
   const { data: sites } = useCollection<ConstructionSite>('construction_sites', [orderBy('name')])
+  const { data: bankAccounts } = useCollection<BankAccount>('bank_accounts', [orderBy('bankName')])
 
   const {
     register,
@@ -173,7 +174,17 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
           {values.paymentMethod === 'cheque' && (
             <div className="grid grid-cols-2 gap-4 rounded-lg bg-[var(--bg-surface-muted)] p-3">
               <TextField label="Cheque Number" {...register('chequeNumber')} />
-              <TextField label="Bank" {...register('chequeBank')} />
+              <SelectField
+                label="Drawn On"
+                placeholder="Select bank account…"
+                options={bankAccounts.map((b) => ({ value: b.id, label: `${b.bankName} — ${b.accountNumber}` }))}
+                value={values.chequeBankAccountId}
+                onChange={(e) => {
+                  const acc = bankAccounts.find((b) => b.id === e.target.value)
+                  setValue('chequeBankAccountId', e.target.value)
+                  setValue('chequeBankName', acc?.bankName ?? '')
+                }}
+              />
               <TextField label="Cheque Date" type="date" {...register('chequeDate')} />
               <TextField label="Due Date" type="date" {...register('chequeDueDate')} />
             </div>

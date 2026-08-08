@@ -350,6 +350,7 @@ export interface Cheque {
   sourceRef: string
   party: string
   bank: string
+  bankAccountId?: string
   chequeNumber: string
   chequeDate: Timestamp
   dueDate: Timestamp

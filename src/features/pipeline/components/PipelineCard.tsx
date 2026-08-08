@@ -24,8 +24,9 @@ export interface PipelineCardModel {
 }
 
 export function PipelineCard({ model }: { model: PipelineCardModel }) {
-  const { appUser } = useAuth()
+  const { user, appUser } = useAuth()
   const editable = canEdit(appUser?.role ?? 'manager', 'businessPipeline')
+  const actor = { uid: user?.uid ?? '', name: appUser?.displayName ?? 'Unknown' }
 
   async function handle(action: () => Promise<unknown>, successMsg: string) {
     try {
@@ -75,17 +76,17 @@ export function PipelineCard({ model }: { model: PipelineCardModel }) {
               <Link to={`/business-pipeline/${model.id}/edit`} className="text-sm font-medium text-brand-600 hover:underline">
                 Edit
               </Link>
-              <Button size="sm" onClick={() => handle(() => submitQuotation(model.id), 'Quotation submitted')}>
+              <Button size="sm" onClick={() => handle(() => submitQuotation(model.id, actor), 'Quotation submitted')}>
                 Submit
               </Button>
             </>
           )}
           {model.kind === 'quotation' && model.currentStageKey === 'submitted' && (
             <>
-              <Button size="sm" variant="accent" onClick={() => handle(() => approveQuotation(model.id), 'Quotation approved')}>
+              <Button size="sm" variant="accent" onClick={() => handle(() => approveQuotation(model.id, actor), 'Quotation approved')}>
                 Approve
               </Button>
-              <Button size="sm" variant="danger" onClick={() => handle(() => rejectQuotation(model.id), 'Quotation rejected')}>
+              <Button size="sm" variant="danger" onClick={() => handle(() => rejectQuotation(model.id, actor), 'Quotation rejected')}>
                 Reject
               </Button>
             </>
@@ -97,14 +98,14 @@ export function PipelineCard({ model }: { model: PipelineCardModel }) {
                   size="sm"
                   onClick={() => {
                     const next = nextPipelineStage(model.currentStageKey as PipelineStage)
-                    if (next) handle(() => advanceProjectStage(model.id, next), `Moved to ${next.replace(/_/g, ' ')}`)
+                    if (next) handle(() => advanceProjectStage(model.id, next, actor), `Moved to ${next.replace(/_/g, ' ')}`)
                   }}
                 >
                   Advance to {nextPipelineStage(model.currentStageKey as PipelineStage)?.replace(/_/g, ' ')}
                 </Button>
               )}
               {isDone && (
-                <Button size="sm" variant="accent" onClick={() => handle(() => closeProject(model.id), 'Project closed')}>
+                <Button size="sm" variant="accent" onClick={() => handle(() => closeProject(model.id, actor), 'Project closed')}>
                   Close Project
                 </Button>
               )}

@@ -11,6 +11,7 @@ import { ConstructionSitesPage } from '@/features/construction-sites/Constructio
 import { BankAccountsPage } from '@/features/bank-accounts/BankAccountsPage'
 import { PipelineRoutes } from '@/features/pipeline/PipelineRoutes'
 import { PurchaseOrdersPage } from '@/features/purchase-orders/PurchaseOrdersPage'
+import { OutstandingRoutes } from '@/features/outstanding/OutstandingRoutes'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -93,7 +94,14 @@ export function AppRoutes() {
           }
         />
         <Route path="/labour" element={<Placeholder title="Labour Management" moduleKey="labourManagement" />} />
-        <Route path="/outstanding/*" element={<Placeholder title="Outstanding" moduleKey="outstanding" />} />
+        <Route
+          path="/outstanding/*"
+          element={
+            <RequireModule moduleKey="outstanding">
+              <OutstandingRoutes />
+            </RequireModule>
+          }
+        />
         <Route path="/debtors" element={<Placeholder title="Debtors" moduleKey="debtors" />} />
         <Route path="/cheques" element={<Placeholder title="Cheque Management" moduleKey="chequeManagement" />} />
         <Route path="/vat-suppliers" element={<Placeholder title="VAT Suppliers" moduleKey="vatSuppliers" />} />
