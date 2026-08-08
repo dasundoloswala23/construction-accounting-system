@@ -12,6 +12,8 @@ import { BankAccountsPage } from '@/features/bank-accounts/BankAccountsPage'
 import { PipelineRoutes } from '@/features/pipeline/PipelineRoutes'
 import { PurchaseOrdersPage } from '@/features/purchase-orders/PurchaseOrdersPage'
 import { OutstandingRoutes } from '@/features/outstanding/OutstandingRoutes'
+import { IncomePage } from '@/features/income/IncomePage'
+import { LabourPage } from '@/features/labour/LabourPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -84,7 +86,14 @@ export function AppRoutes() {
             </RequireModule>
           }
         />
-        <Route path="/income" element={<Placeholder title="Income" moduleKey="income" />} />
+        <Route
+          path="/income"
+          element={
+            <RequireModule moduleKey="income">
+              <IncomePage />
+            </RequireModule>
+          }
+        />
         <Route
           path="/bank-accounts"
           element={
@@ -93,7 +102,14 @@ export function AppRoutes() {
             </RequireModule>
           }
         />
-        <Route path="/labour" element={<Placeholder title="Labour Management" moduleKey="labourManagement" />} />
+        <Route
+          path="/labour"
+          element={
+            <RequireModule moduleKey="labourManagement">
+              <LabourPage />
+            </RequireModule>
+          }
+        />
         <Route
           path="/outstanding/*"
           element={

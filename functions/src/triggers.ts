@@ -21,7 +21,7 @@ export const onProjectPaymentWrite = onDocumentWritten('project_payments/{paymen
   if (!after) return // deletes are not un-applied; payments are treated as append-only
 
   const justCompleted = after.status === 'completed' && before?.status !== 'completed'
-  if (!justCompleted) return
+  if (!justCompleted || !after.projectId) return // unassociated Income entries have no project to update
 
   const projectRef = db.doc(`projects/${after.projectId}`)
   await db.runTransaction(async (tx: Transaction) => {
