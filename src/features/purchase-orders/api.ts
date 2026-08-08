@@ -50,6 +50,19 @@ export async function createPurchaseOrder(input: POFormInput, createdBy: string,
     createdBy,
   })
 
+  if (input.vatEnabled) {
+    const vatInvoiceRef = doc(collection(db, 'vat_invoices'))
+    batch.set(vatInvoiceRef, {
+      supplierId: input.supplierId,
+      supplierName: input.supplierName,
+      invoiceNumber: poNumber,
+      invoiceDate: Timestamp.fromDate(new Date(input.date)),
+      vatAmount: grandTotal - subtotal,
+      totalAmount: grandTotal,
+      poId: poRef.id,
+    })
+  }
+
   if (input.paymentMethod === 'cheque' && input.chequeNumber) {
     const chequeRef = doc(collection(db, 'cheques'))
     batch.set(chequeRef, {

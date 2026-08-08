@@ -14,6 +14,8 @@ import { PurchaseOrdersPage } from '@/features/purchase-orders/PurchaseOrdersPag
 import { OutstandingRoutes } from '@/features/outstanding/OutstandingRoutes'
 import { IncomePage } from '@/features/income/IncomePage'
 import { LabourPage } from '@/features/labour/LabourPage'
+import { ChequeManagementPage } from '@/features/cheques/ChequeManagementPage'
+import { VatSuppliersPage } from '@/features/vat-suppliers/VatSuppliersPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -119,8 +121,22 @@ export function AppRoutes() {
           }
         />
         <Route path="/debtors" element={<Placeholder title="Debtors" moduleKey="debtors" />} />
-        <Route path="/cheques" element={<Placeholder title="Cheque Management" moduleKey="chequeManagement" />} />
-        <Route path="/vat-suppliers" element={<Placeholder title="VAT Suppliers" moduleKey="vatSuppliers" />} />
+        <Route
+          path="/cheques"
+          element={
+            <RequireModule moduleKey="chequeManagement">
+              <ChequeManagementPage />
+            </RequireModule>
+          }
+        />
+        <Route
+          path="/vat-suppliers"
+          element={
+            <RequireModule moduleKey="vatSuppliers">
+              <VatSuppliersPage />
+            </RequireModule>
+          }
+        />
         <Route path="/notifications" element={<Placeholder title="Notifications" moduleKey="notifications" />} />
         <Route path="/reports" element={<Placeholder title="Reports & Analytics" moduleKey="reports" />} />
         <Route
