@@ -10,6 +10,7 @@ import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { ConstructionSitesPage } from '@/features/construction-sites/ConstructionSitesPage'
 import { BankAccountsPage } from '@/features/bank-accounts/BankAccountsPage'
 import { PipelineRoutes } from '@/features/pipeline/PipelineRoutes'
+import { PurchaseOrdersPage } from '@/features/purchase-orders/PurchaseOrdersPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -50,7 +51,14 @@ export function AppRoutes() {
             </RequireModule>
           }
         />
-        <Route path="/purchase-orders" element={<Placeholder title="Purchase Orders" moduleKey="purchaseOrders" />} />
+        <Route
+          path="/purchase-orders"
+          element={
+            <RequireModule moduleKey="purchaseOrders">
+              <PurchaseOrdersPage />
+            </RequireModule>
+          }
+        />
         <Route
           path="/suppliers"
           element={
