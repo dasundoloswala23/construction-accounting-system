@@ -113,6 +113,7 @@ export async function approveQuotation(quotationId: string, actor: Actor) {
     receivedAmount: 0,
     outstandingAmount: quotation.pricing.grandTotal,
     overdueAmount: 0,
+    creditBalance: 0,
     status: 'active',
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),

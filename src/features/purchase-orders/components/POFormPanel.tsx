@@ -1,12 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { Plus, X } from 'lucide-react'
 import { orderBy } from 'firebase/firestore'
 import { SidePanel, Button } from '@/shared/components'
-import { SelectField, CheckboxField, TextField, inputBaseClass } from '@/shared/components/form'
+import { SelectField, CheckboxField, TextField, TextareaField, inputBaseClass } from '@/shared/components/form'
 import { useCollection } from '@/shared/hooks/useCollection'
-import type { Supplier, ConstructionSite, BankAccount } from '@/shared/types/entities'
+import { useDocument } from '@/shared/hooks/useDocument'
+import type { Supplier, ConstructionSite, BankAccount, Company, CashAccount } from '@/shared/types/entities'
 import { formatCurrency } from '@/shared/lib/currency'
 import { todayInputValue } from '@/shared/lib/dates'
 import { useAuth } from '@/app/providers/AuthProvider'
@@ -23,16 +24,18 @@ const PAYMENT_METHODS: { value: POFormInput['paymentMethod']; label: string }[] 
 
 const emptyLine = { code: '', product: '', comment: '', qty: 1, unitPrice: 0, total: 0 }
 
-const empty: POFormInput = {
-  supplierId: '',
-  supplierName: '',
-  constructionSiteId: '',
-  siteName: '',
-  lineItems: [emptyLine],
-  vatEnabled: false,
-  vatPercent: 18,
-  paymentMethod: 'cash',
-  date: todayInputValue(),
+function emptyForm(defaultVatPercent: number): POFormInput {
+  return {
+    supplierId: '',
+    supplierName: '',
+    constructionSiteId: '',
+    siteName: '',
+    lineItems: [emptyLine],
+    vatEnabled: false,
+    vatPercent: defaultVatPercent,
+    paymentMethod: 'cash',
+    date: todayInputValue(),
+  }
 }
 
 export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -40,6 +43,9 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
   const { data: suppliers } = useCollection<Supplier>('suppliers', [orderBy('companyName')])
   const { data: sites } = useCollection<ConstructionSite>('construction_sites', [orderBy('name')])
   const { data: bankAccounts } = useCollection<BankAccount>('bank_accounts', [orderBy('bankName')])
+  const { data: company } = useDocument<Company>('companies/main')
+  const { data: cashAccount } = useDocument<CashAccount>('cash_accounts/main')
+  const defaultVatPercent = company?.defaultVatPercent ?? 18
 
   const {
     register,
@@ -49,17 +55,42 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
     handleSubmit,
     reset,
     formState: { isSubmitting },
-  } = useForm<POFormInput>({ defaultValues: empty })
+  } = useForm<POFormInput>({ defaultValues: emptyForm(defaultVatPercent) })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' })
   const values = watch()
 
+  const vatDefaultApplied = useRef(false)
   useEffect(() => {
-    if (open) reset(empty)
+    if (open) {
+      reset(emptyForm(defaultVatPercent))
+      vatDefaultApplied.current = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, reset])
+
+  // companies/main usually loads after this panel's first render, so the reset
+  // above often still applies the 18% fallback — once the real company default
+  // arrives, patch just that one field in rather than resetting the whole form
+  // (which would blow away whatever the user has already typed).
+  useEffect(() => {
+    if (open && company && !vatDefaultApplied.current) {
+      setValue('vatPercent', company.defaultVatPercent)
+      vatDefaultApplied.current = true
+    }
+  }, [open, company, setValue])
 
   const subtotal = values.lineItems.reduce((sum, li) => sum + (Number(li.qty) || 0) * (Number(li.unitPrice) || 0), 0)
   const grandTotal = values.vatEnabled ? subtotal * (1 + (Number(values.vatPercent) || 0) / 100) : subtotal
+  const vatIsOverridden = values.vatEnabled && Number(values.vatPercent) !== defaultVatPercent
+
+  const selectedBankAccount = bankAccounts.find((b) => b.id === values.bankAccountId)
+  const availableBalance = values.paymentMethod === 'cash' ? (cashAccount?.currentBalance ?? 0) : (selectedBankAccount?.currentBalance ?? 0)
+  const insufficientBalance =
+    (values.paymentMethod === 'cash' || values.paymentMethod === 'bank_transfer') &&
+    !company?.allowOverdraft &&
+    grandTotal > availableBalance &&
+    (values.paymentMethod === 'cash' || !!values.bankAccountId)
 
   function onSupplierChange(id: string) {
     const s = suppliers.find((s) => s.id === id)
@@ -82,8 +113,20 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
       toast.error('Select a construction site')
       return
     }
+    if (formValues.paymentMethod === 'bank_transfer' && !formValues.bankAccountId) {
+      toast.error('Select which bank account this is paid from')
+      return
+    }
+    if (vatIsOverridden && !formValues.vatOverrideReason?.trim()) {
+      toast.error('Enter a reason for overriding the default VAT rate')
+      return
+    }
+    if (insufficientBalance) {
+      toast.error(`Insufficient ${values.paymentMethod === 'cash' ? 'cash' : 'bank'} balance for this payment`)
+      return
+    }
     try {
-      await createPurchaseOrder(formValues, user?.uid ?? '')
+      await createPurchaseOrder({ ...formValues, vatOverridden: vatIsOverridden }, user?.uid ?? '')
       toast.success('Purchase order created')
       onClose()
     } catch {
@@ -165,11 +208,34 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
 
         <div className="space-y-4 border-t border-[var(--border-default)] pt-4">
           <CheckboxField label="Apply VAT" {...register('vatEnabled')} />
-          {values.vatEnabled && <TextField label="VAT Percentage" type="number" step="0.1" {...register('vatPercent', { valueAsNumber: true })} />}
+          {values.vatEnabled && (
+            <div className="space-y-2">
+              <TextField label="VAT Percentage" type="number" step="0.1" {...register('vatPercent', { valueAsNumber: true })} />
+              {vatIsOverridden && (
+                <div className="rounded-lg bg-warning-50 p-3 dark:bg-warning-500/10">
+                  <p className="text-xs text-warning-700 dark:text-warning-500">
+                    Differs from the company default of {defaultVatPercent}% — a reason is required.
+                  </p>
+                  <TextareaField label="Override Reason" required rows={2} {...register('vatOverrideReason')} />
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <SelectField label="Payment Method" options={PAYMENT_METHODS} {...register('paymentMethod')} />
             <TextField label="Date" type="date" {...register('date')} />
           </div>
+
+          {values.paymentMethod === 'bank_transfer' && (
+            <div className="rounded-lg bg-[var(--bg-surface-muted)] p-3">
+              <SelectField
+                label="Paid From"
+                placeholder="Select bank account…"
+                options={bankAccounts.map((b) => ({ value: b.id, label: `${b.bankName} — ${b.accountNumber} (${formatCurrency(b.currentBalance)})` }))}
+                {...register('bankAccountId')}
+              />
+            </div>
+          )}
 
           {values.paymentMethod === 'cheque' && (
             <div className="grid grid-cols-2 gap-4 rounded-lg bg-[var(--bg-surface-muted)] p-3">
@@ -188,6 +254,13 @@ export function POFormPanel({ open, onClose }: { open: boolean; onClose: () => v
               <TextField label="Cheque Date" type="date" {...register('chequeDate')} />
               <TextField label="Due Date" type="date" {...register('chequeDueDate')} />
             </div>
+          )}
+
+          {insufficientBalance && (
+            <p className="text-xs font-medium text-danger-500">
+              Insufficient {values.paymentMethod === 'cash' ? 'cash' : 'bank'} balance — available {formatCurrency(availableBalance)}, needed{' '}
+              {formatCurrency(grandTotal)}.
+            </p>
           )}
 
           <div className="rounded-lg bg-[var(--bg-surface-muted)] p-4">

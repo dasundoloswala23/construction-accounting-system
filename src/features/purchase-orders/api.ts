@@ -11,7 +11,11 @@ export interface POFormInput {
   lineItems: PurchaseOrderLineItem[]
   vatEnabled: boolean
   vatPercent: number
+  vatOverridden?: boolean
+  vatOverrideReason?: string
   paymentMethod: PaymentMethod
+  /** Which account paid it, when paymentMethod is bank_transfer. */
+  bankAccountId?: string
   date: string
   chequeNumber?: string
   chequeDate?: string
@@ -33,6 +37,7 @@ export async function createPurchaseOrder(input: POFormInput, createdBy: string,
 
   const batch = writeBatch(db)
   const poRef = doc(collection(db, 'purchase_orders'))
+  const date = Timestamp.fromDate(new Date(input.date))
   batch.set(poRef, {
     poNumber,
     supplierId: input.supplierId,
@@ -42,13 +47,39 @@ export async function createPurchaseOrder(input: POFormInput, createdBy: string,
     lineItems,
     vatEnabled: input.vatEnabled,
     vatPercent: input.vatPercent,
+    vatOverridden: input.vatOverridden ?? false,
+    vatOverrideReason: input.vatOverrideReason ?? '',
     subtotal,
     grandTotal,
     paymentMethod: input.paymentMethod,
+    bankAccountId: input.paymentMethod === 'bank_transfer' ? (input.bankAccountId ?? '') : '',
     status,
-    date: Timestamp.fromDate(new Date(input.date)),
+    date,
     createdBy,
   })
+
+  if (input.paymentMethod === 'bank_transfer' && input.bankAccountId) {
+    batch.set(doc(collection(db, 'bank_transactions')), {
+      bankAccountId: input.bankAccountId,
+      type: 'debit',
+      amount: grandTotal,
+      source: 'po_payment',
+      sourceRef: poRef.id,
+      date,
+      balanceAfter: 0, // filled in by onBankTransactionWrite
+      createdBy,
+    })
+  } else if (input.paymentMethod === 'cash') {
+    batch.set(doc(collection(db, 'cash_transactions')), {
+      type: 'debit',
+      amount: grandTotal,
+      source: 'po_payment',
+      sourceRef: poRef.id,
+      date,
+      balanceAfter: 0, // filled in by onCashTransactionWrite
+      createdBy,
+    })
+  }
 
   if (input.vatEnabled) {
     const vatInvoiceRef = doc(collection(db, 'vat_invoices'))

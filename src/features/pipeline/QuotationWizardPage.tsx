@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,7 +9,7 @@ import type { TabItem } from '@/shared/components'
 import { useAuth } from '@/app/providers/AuthProvider'
 import { useDocument } from '@/shared/hooks/useDocument'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
-import type { Quotation, QuotationDocument, QuotationDocumentType } from '@/shared/types/entities'
+import type { Company, Quotation, QuotationDocument, QuotationDocumentType } from '@/shared/types/entities'
 import { Timestamp } from 'firebase/firestore'
 import { quotationFormSchema, defaultQuotationForm, type QuotationFormValues } from './schema'
 import { createQuotation, updateQuotation } from './api'
@@ -55,6 +55,7 @@ export function QuotationWizardPage() {
   const navigate = useNavigate()
   const { user, appUser } = useAuth()
   const { data: existing, loading: loadingExisting } = useDocument<Quotation>(isEdit ? `quotations/${id}` : null)
+  const { data: company } = useDocument<Company>('companies/main')
 
   const [activeTab, setActiveTab] = useState('project')
   const [documents, setDocuments] = useState<QuotationDocument[]>([])
@@ -67,6 +68,7 @@ export function QuotationWizardPage() {
     control,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationFormSchema),
@@ -79,6 +81,14 @@ export function QuotationWizardPage() {
       setDocuments(existing.documents ?? [])
     }
   }, [existing, reset])
+
+  const vatDefaultApplied = useRef(false)
+  useEffect(() => {
+    if (!isEdit && company && !vatDefaultApplied.current) {
+      setValue('vatPercent', company.defaultVatPercent)
+      vatDefaultApplied.current = true
+    }
+  }, [company, isEdit, setValue])
 
   async function onUpload(type: QuotationDocumentType, file: File) {
     setUploadingType(type)
