@@ -18,16 +18,7 @@ import { ChequeManagementPage } from '@/features/cheques/ChequeManagementPage'
 import { VatSuppliersPage } from '@/features/vat-suppliers/VatSuppliersPage'
 import { DebtorsPage } from '@/features/debtors/DebtorsPage'
 import { NotificationsPage } from '@/features/notifications/NotificationsPage'
-import { ComingSoon } from '@/shared/components'
-import type { ModuleKey } from '@/shared/lib/permissions'
-
-function Placeholder({ title, moduleKey }: { title: string; moduleKey: ModuleKey }) {
-  return (
-    <RequireModule moduleKey={moduleKey}>
-      <ComingSoon title={title} />
-    </RequireModule>
-  )
-}
+import { ReportsPage } from '@/features/reports/ReportsPage'
 
 export function AppRoutes() {
   return (
@@ -154,7 +145,14 @@ export function AppRoutes() {
             </RequireModule>
           }
         />
-        <Route path="/reports" element={<Placeholder title="Reports & Analytics" moduleKey="reports" />} />
+        <Route
+          path="/reports"
+          element={
+            <RequireModule moduleKey="reports">
+              <ReportsPage />
+            </RequireModule>
+          }
+        />
         <Route
           path="/settings/*"
           element={
