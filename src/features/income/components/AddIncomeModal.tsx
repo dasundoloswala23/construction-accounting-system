@@ -6,7 +6,7 @@ import { SidePanel, Button } from '@/shared/components'
 import { TextField, SelectField, TextareaField } from '@/shared/components/form'
 import { useCollection } from '@/shared/hooks/useCollection'
 import { useAuth } from '@/app/providers/AuthProvider'
-import type { ConstructionSite } from '@/shared/types/entities'
+import type { BankAccount, ConstructionSite } from '@/shared/types/entities'
 import { todayInputValue } from '@/shared/lib/dates'
 import { addIncome, type AddIncomeInput } from '../api'
 
@@ -16,6 +16,7 @@ const empty: Omit<AddIncomeInput, 'receivedBy'> = {
   referenceNumber: '',
   amount: 0,
   paymentMethod: 'cash',
+  bankAccountId: '',
   date: todayInputValue(),
   dueDate: '',
   notes: '',
@@ -24,6 +25,7 @@ const empty: Omit<AddIncomeInput, 'receivedBy'> = {
 export function AddIncomeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth()
   const { data: sites } = useCollection<ConstructionSite>('construction_sites', [orderBy('name')])
+  const { data: bankAccounts } = useCollection<BankAccount>('bank_accounts', [orderBy('bankName')])
   const {
     register,
     watch,
@@ -42,6 +44,10 @@ export function AddIncomeModal({ open, onClose }: { open: boolean; onClose: () =
   async function onSubmit(input: Omit<AddIncomeInput, 'receivedBy'>) {
     if (!input.customerName || input.amount <= 0) {
       toast.error('Enter a customer and a valid amount')
+      return
+    }
+    if (input.paymentMethod === 'bank_transfer' && !input.bankAccountId) {
+      toast.error('Select a bank account')
       return
     }
     try {
@@ -97,6 +103,15 @@ export function AddIncomeModal({ open, onClose }: { open: boolean; onClose: () =
           ]}
           {...register('paymentMethod')}
         />
+        {values.paymentMethod === 'bank_transfer' && (
+          <SelectField
+            label="Bank Account"
+            required
+            placeholder="Select account…"
+            options={bankAccounts.map((b) => ({ value: b.id, label: `${b.bankName} — ${b.accountNumber}` }))}
+            {...register('bankAccountId')}
+          />
+        )}
         {values.paymentMethod === 'credit' && <TextField label="Due Date" type="date" {...register('dueDate')} />}
         <TextareaField label="Notes" placeholder="Additional notes…" {...register('notes')} />
       </form>

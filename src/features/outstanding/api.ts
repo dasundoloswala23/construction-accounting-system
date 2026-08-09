@@ -3,7 +3,7 @@ import { db } from '@/shared/lib/firebase'
 import { nextFormattedNumber } from '@/shared/lib/sequence'
 import { logTimelineEvent } from '@/shared/lib/timeline'
 import type { Actor } from '@/features/pipeline/api'
-import type { PaymentAttachment, Project, Company, ProjectDocumentType } from '@/shared/types/entities'
+import type { PaymentAttachment, Project, Company, ProjectDocumentType, PaymentAllocation } from '@/shared/types/entities'
 
 export interface ReceivePaymentInput {
   amount: number
@@ -16,6 +16,9 @@ export interface ReceivePaymentInput {
   chequeNumber?: string
   chequeDate?: string
   chequeDueDate?: string
+  /** Empty when the project has no open invoices — the payment then applies to
+   * the project as a whole, exactly as before this field existed. */
+  allocations?: PaymentAllocation[]
 }
 
 export async function receivePayment(
@@ -26,6 +29,7 @@ export async function receivePayment(
 ) {
   const batch = writeBatch(db)
   const paymentRef = doc(collection(db, 'project_payments'))
+  const date = Timestamp.fromDate(new Date(input.date))
 
   const isCheque = input.paymentType === 'cheque'
   const status = isCheque ? 'pending_clearance' : 'completed'
@@ -34,7 +38,7 @@ export async function receivePayment(
     projectId: project.id,
     projectName: project.projectName,
     customerName: project.customer.companyName,
-    date: Timestamp.fromDate(new Date(input.date)),
+    date,
     amount: input.amount,
     paymentType: input.paymentType,
     cashReceivedBy: input.paymentType === 'cash' ? input.cashReceivedBy ?? '' : '',
@@ -43,6 +47,7 @@ export async function receivePayment(
     receivedBy: actor.uid,
     status,
     attachments,
+    allocations: input.allocations ?? [],
     createdAt: Timestamp.now(),
   })
 
@@ -54,8 +59,19 @@ export async function receivePayment(
       amount: input.amount,
       source: 'project_payment',
       sourceRef: paymentRef.id,
-      date: Timestamp.fromDate(new Date(input.date)),
+      date,
       balanceAfter: 0, // filled in by onBankTransactionWrite
+      createdBy: actor.uid,
+    })
+  } else if (input.paymentType === 'cash') {
+    const txnRef = doc(collection(db, 'cash_transactions'))
+    batch.set(txnRef, {
+      type: 'credit',
+      amount: input.amount,
+      source: 'project_payment',
+      sourceRef: paymentRef.id,
+      date,
+      balanceAfter: 0, // filled in by onCashTransactionWrite
       createdBy: actor.uid,
     })
   }
@@ -125,6 +141,8 @@ export async function uploadInvoice(projectId: string, input: UploadInvoiceInput
     invoiceNumber: input.invoiceNumber,
     invoiceDate: Timestamp.fromDate(new Date(input.invoiceDate)),
     invoiceAmount: input.invoiceAmount,
+    receivedAmount: 0,
+    outstandingAmount: input.invoiceAmount,
   })
   await logTimelineEvent(projectId, 'invoice_uploaded', actor.uid, actor.name, { invoiceNumber: input.invoiceNumber })
 }

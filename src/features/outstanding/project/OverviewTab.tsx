@@ -84,6 +84,12 @@ export function OverviewTab({ project }: { project: ProjectWithId }) {
             <span className="text-sm font-medium text-[var(--text-primary)]">Outstanding</span>
             <CurrencyText amount={project.outstandingAmount} tone={project.outstandingAmount > 0 ? 'negative' : 'default'} />
           </div>
+          {project.creditBalance > 0 && (
+            <div className="flex justify-between rounded-lg bg-accent-50 px-3 py-2 dark:bg-accent-500/10">
+              <span className="text-sm font-medium text-accent-700 dark:text-accent-500">Unallocated Credit</span>
+              <CurrencyText amount={project.creditBalance} tone="positive" />
+            </div>
+          )}
           <div>
             <div className="flex justify-between text-xs text-[var(--text-muted)]">
               <span>Progress</span>

@@ -27,6 +27,12 @@ export function InvoicesTab({ project }: { project: ProjectWithId }) {
     { key: 'invoiceNumber', header: 'Invoice Number', render: (d) => d.invoiceNumber || '—' },
     { key: 'date', header: 'Date', render: (d) => (d.invoiceDate ? formatDateLong(d.invoiceDate) : '—') },
     { key: 'amount', header: 'Amount', render: (d) => (d.invoiceAmount ? <CurrencyText amount={d.invoiceAmount} /> : '—') },
+    { key: 'received', header: 'Received', render: (d) => <CurrencyText amount={d.receivedAmount ?? 0} tone="positive" /> },
+    {
+      key: 'outstanding',
+      header: 'Outstanding',
+      render: (d) => <CurrencyText amount={d.outstandingAmount ?? d.invoiceAmount ?? 0} tone={(d.outstandingAmount ?? d.invoiceAmount ?? 0) > 0 ? 'negative' : 'default'} />,
+    },
     { key: 'comments', header: 'Comments', render: (d) => d.comments || '—' },
     {
       key: 'file',
