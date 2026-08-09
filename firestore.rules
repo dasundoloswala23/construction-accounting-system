@@ -163,7 +163,9 @@ service cloud.firestore {
 
     match /labour_payments/{id} {
       allow read: if isSignedIn();
-      allow create: if isAdmin() || isManager() || isAccountant();
+      // Accountant has view-only access to Labour Management per the permission
+      // matrix — only Admin/Manager (labourManagement: 'edit') can record payments.
+      allow create: if isAdmin() || isManager();
       allow update, delete: if isAdmin();
     }
 
