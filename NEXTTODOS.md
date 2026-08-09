@@ -19,17 +19,11 @@ _Last updated: 2026-08-09_
 11. Cheque Management + VAT Suppliers.
 12. Debtors.
 13. Notifications.
-14. Dashboard real-data wiring (`useDashboardData.ts` replacing `mockData.ts`) — **built and verified, but currently only staged, not committed.** Run `git status` to confirm before assuming otherwise; the working tree at time of writing shows:
-    ```
-    M  src/features/dashboard/DashboardPage.tsx
-    D  src/features/dashboard/mockData.ts
-    A  src/features/dashboard/useDashboardData.ts
-    ```
-    Commit this yourself when ready — it was intentionally left un-committed after a mid-flight interruption, not because anything is wrong with it.
+14. Dashboard real-data wiring (`useDashboardData.ts` replacing `mockData.ts`) — committed.
+15. **Reports & Analytics** (`src/features/reports/`) — 8 tabs (Overview/Income/Expenses/VAT/Suppliers/Debtors/Sites/Labour), a This Month/Last 3 Months/All Time range filter, `recharts` breakdown/comparison charts, and 4 downloadable reports (Financial Summary, Income Statement, Expense Statement, VAT Report) each exportable to PDF and Excel. Verified against the emulator with real data (e.g. All Time: LKR 525K income, LKR 115.4K expenses, matching the Dashboard's own numbers), zero console errors. Committed.
 
 **Not started:**
 
-- Reports & Analytics module (currently a `ComingSoon` placeholder at `src/app/routes.tsx:157`).
 - Full hardening pass (see §2).
 - Final production redeploy.
 
@@ -42,15 +36,13 @@ _Last updated: 2026-08-09_
 
 In priority order:
 
-1. **Reports & Analytics module** — 8 tabs (Overview / Income / Expenses / VAT / Suppliers / Debtors / Sites / Labour), charts via `recharts`, 4 downloadable report types (reuse `src/shared/lib/exporters.ts`'s lazy-loaded PDF/Excel helpers). Replace the `Placeholder` route in `src/app/routes.tsx:157`.
-2. **Hardening pass**:
+1. **Hardening pass**:
    - Full Firestore/Storage rules audit across all 3 roles (Admin/Accountant/Manager) and all ~19 collections — log in as each role and confirm the Settings > Permissions matrix is actually enforced by rules, not just displayed in the UI.
    - PDF/Excel export polish (headers/branding/consistent number formatting).
    - Empty/loading/error states pass across every module.
    - Responsive/mobile layout check.
-3. **Final production redeploy** — rebuild Hosting, redeploy Firestore rules/indexes, Storage rules, and all Cloud Functions once the above two items are done.
-4. **User-blocked items** (see §1) — ping the user once ready to bootstrap production Admin login.
-5. Commit the currently-staged Dashboard real-wiring change (§1, item 14) — trivial, just needs a `git commit`.
+2. **Final production redeploy** — rebuild Hosting, redeploy Firestore rules/indexes, Storage rules, and all Cloud Functions once the above item is done.
+3. **User-blocked items** (see §1) — ping the user once ready to bootstrap production Admin login.
 
 ## 3. Architecture
 
@@ -77,3 +69,4 @@ In priority order:
 | Product/quotation category & unit lists | `PRODUCT_CATEGORIES` / `PRODUCT_UNITS` in `src/features/products/api.ts`, quotation categories in `src/features/pipeline/schema.ts` | Fine for v1. If the business later wants to manage these themselves, move to a Settings-editable Firestore doc (e.g. `companies/main.categories`) instead of a hardcoded array. |
 | Currency fixed to LKR | `src/shared/lib/currency.ts` (`Intl.NumberFormat('en-LK', { currency: 'LKR' })`) | Intentional single-currency scope for this business. Only revisit if multi-currency support is ever requested — would need a currency field per transaction, not just a formatting change. |
 | `scanOverdue` scheduled Cloud Function | `functions/src/triggers.ts` | Never exercised locally (no Pub/Sub emulator support) — verified by code review only. Confirm it actually fires correctly once deployed to production (check Cloud Scheduler logs after the first scheduled run). |
+| Reports date ranges fixed to 3 presets | `src/features/reports/api.ts` (`REPORT_RANGES`: This Month / Last 3 Months / All Time) | No custom date-range picker yet. Add one later if the business wants an arbitrary start/end date instead of the 3 presets. |
