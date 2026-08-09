@@ -1,6 +1,6 @@
 import type { Timestamp } from 'firebase/firestore'
 import { startOfMonth, subMonths } from 'date-fns'
-import type { ProjectPayment, PurchaseOrder, VatInvoice } from '@/shared/types/entities'
+import type { ProjectPayment, PurchaseOrder, VatInvoice, Project, Supplier, ConstructionSite, Labour } from '@/shared/types/entities'
 import { formatDate } from '@/shared/lib/dates'
 
 export type ReportRange = 'thisMonth' | 'last3Months' | 'allTime'
@@ -72,6 +72,64 @@ export function buildVatReportRows(invoices: VatInvoice[]) {
     'Invoice Number': inv.invoiceNumber,
     'VAT Amount': inv.vatAmount,
     'Total Amount': inv.totalAmount,
+  }))
+}
+
+export function buildOutstandingReportRows(projects: Project[]) {
+  return projects
+    .filter((p) => p.outstandingAmount > 0)
+    .map((p) => ({
+      Project: p.projectName,
+      Customer: p.customer.companyName,
+      'Contract Value': p.contractValue,
+      Received: p.receivedAmount,
+      Outstanding: p.outstandingAmount,
+      Overdue: p.overdueAmount,
+    }))
+}
+
+export function buildDebtorReportRows(projects: Project[]) {
+  return projects
+    .filter((p) => p.outstandingAmount > 0)
+    .map((p) => ({
+      Customer: p.customer.companyName,
+      Project: p.projectName,
+      'Contract Value': p.contractValue,
+      Received: p.receivedAmount,
+      Outstanding: p.outstandingAmount,
+    }))
+}
+
+export function buildSupplierReportRows(suppliers: (Supplier & { id: string })[], purchaseOrders: PurchaseOrder[]) {
+  return suppliers.map((s) => {
+    const orders = purchaseOrders.filter((po) => po.supplierId === s.id)
+    return {
+      Supplier: s.companyName,
+      'VAT Registered': s.vatRegistered ? 'Yes' : 'No',
+      Orders: orders.length,
+      'Total Spend': orders.reduce((sum, po) => sum + po.grandTotal, 0),
+      Outstanding: s.outstandingBalance,
+    }
+  })
+}
+
+export function buildSiteReportRows(sites: ConstructionSite[]) {
+  return sites.map((s) => ({
+    Site: s.name,
+    Status: s.status,
+    Budget: s.budget,
+    'Spent To Date': s.spentToDate,
+    'Budget Used': s.budget > 0 ? `${Math.round((s.spentToDate / s.budget) * 100)}%` : '—',
+  }))
+}
+
+export function buildLabourReportRows(labour: Labour[]) {
+  return labour.map((l) => ({
+    Name: l.fullName,
+    Role: l.role,
+    Site: l.siteName ?? '',
+    'Total Paid': l.totalPaidAllTime,
+    Outstanding: l.outstandingBalance,
   }))
 }
 
