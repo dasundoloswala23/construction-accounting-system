@@ -2,6 +2,10 @@
 
 _Last updated: 2026-08-09_
 
+## -1. Phase 3 — Reports & Analytics Parity Upgrade (Done)
+
+The user provided a Figma-Make export (`Downloads/Create Modular Figma Prompts`) whose Reports & Analytics page was much richer than what was built in the original pass — header controls, trend-badge KPI cards, and deeper per-tab charts/tables. Reworked to full parity (chosen scope), using real data throughout rather than the reference's placeholder numbers: a Construction Site filter, real period-over-period trend badges, a triple Income/Expenses/Profit chart, an Expense-by-Site donut, a Construction Site Performance table, per-tab breakdown charts/tables on every one of the 8 tabs (Income totals footer, Expense-by-site bars, VAT-by-supplier with TIN/rate, full Supplier summary table, invoice-age-bucketed Debtor aging, Site income-vs-expenses, Labour monthly-paid chart + summary table), and the Download grid expanded from 4 to 9 report types. Found and fixed two more real bugs along the way: a single-slice pie chart rendered as a broken wedge due to a Recharts animation-timing issue, and Total Labour Outstanding could go negative when a worker was paid more than currently owed. The rest of the reference project (other pages) hasn't been compared yet — only Reports was in scope this pass.
+
 ## 0. Phase 2 — Financial Integrity Upgrade (Done)
 
 After the initial 17-module build, the user provided a much more rigorous module-by-module spec (multi-tenant architecture, 5 roles, ledger-first accounting, cash ledger, bank transfers, multi-invoice allocation, configurable VAT, aging/reminders, etc.) and asked to use it as an upgrade checklist against the live system. Agreed scope: **defer full multi-tenancy** (speculative "future" need, one real company today) and **tackle financial-integrity gaps first** — done below; roles/aging/reminders/reports-polish/duplicate-detection are deferred (§6).
