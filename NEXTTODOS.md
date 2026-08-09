@@ -34,15 +34,17 @@ _Last updated: 2026-08-09_
 
 ## 2. Remaining Work
 
-In priority order:
+**Hardening pass — done:**
 
-1. **Hardening pass**:
-   - Full Firestore/Storage rules audit across all 3 roles (Admin/Accountant/Manager) and all ~19 collections — log in as each role and confirm the Settings > Permissions matrix is actually enforced by rules, not just displayed in the UI.
-   - PDF/Excel export polish (headers/branding/consistent number formatting).
-   - Empty/loading/error states pass across every module.
-   - Responsive/mobile layout check.
-2. **Final production redeploy** — rebuild Hosting, redeploy Firestore rules/indexes, Storage rules, and all Cloud Functions once the above item is done.
-3. **User-blocked items** (see §1) — ping the user once ready to bootstrap production Admin login.
+- Firestore/Storage rules audited against the permission matrix for all 3 roles and every collection. Found and fixed one real gap: `labour_payments` create allowed `isAccountant()`, but accountants have only view access to Labour Management — only Admin/Manager should record payments (`firestore.rules`). Verified with a direct client-SDK rules test (bypassing the UI entirely) for both the fix and several other role/collection combinations, plus a live cross-role Playwright pass confirming nav visibility and route-level blocking match the matrix exactly.
+- PDF exports (`src/shared/lib/exporters.ts`) now carry a company-name header, a "Generated on" timestamp, alternating row shading, and a page-number footer instead of a bare title + table. Verified by inspecting the rendered PDF output directly.
+- Empty/loading states swept across every module — pages using the shared `DataTable` get this for free; the handful of custom card-based views (Debtors, Outstanding tabs, Pipeline, Documents) all already had their own inline guards. No gaps found.
+- Responsive check at a 390px mobile width found and fixed a real bug: the sidebar's mobile hamburger button only shrank it to the 76px desktop icon-rail (`sidebarCollapsed`), which still ate a third of the screen and clipped page content (confirmed on the quotation wizard). Sidebar is now a proper off-canvas drawer below the `lg` breakpoint with its own `mobileSidebarOpen` state, a tap-outside backdrop, and auto-close on navigation (`src/app/Sidebar.tsx`, `src/app/Topbar.tsx`, `src/app/providers/uiStore.ts`).
+
+**Still open, in priority order:**
+
+1. **Final production redeploy** — rebuild Hosting, redeploy Firestore rules/indexes, Storage rules, and all Cloud Functions now that the hardening pass (including the rules fix) is done.
+2. **User-blocked items** (see §1) — ping the user once ready to bootstrap production Admin login.
 
 ## 3. Architecture
 
