@@ -6,6 +6,7 @@ export {
   onProjectPaymentWrite,
   onChequeStatusChange,
   onBankTransactionWrite,
+  onCashTransactionWrite,
   onPurchaseOrderWrite,
   onLabourPaymentWrite,
   scanOverdue,

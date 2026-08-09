@@ -147,6 +147,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /cash_accounts/{id} {
+      allow read: if isSignedIn();
+      // currentBalance is Cloud-Functions-only (onCashTransactionWrite) — same
+      // derived-field protection as bank_accounts.currentBalance above.
+      allow write: if false;
+    }
+
+    match /cash_transactions/{id} {
+      allow read: if isSignedIn();
+      allow create: if isFinance();
+      allow update, delete: if isAdmin();
+    }
+
     match /cheques/{id} {
       allow read: if isSignedIn();
       allow write: if isFinance();

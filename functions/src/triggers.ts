@@ -24,13 +24,35 @@ export const onProjectPaymentWrite = onDocumentWritten('project_payments/{paymen
   if (!justCompleted || !after.projectId) return // unassociated Income entries have no project to update
 
   const projectRef = db.doc(`projects/${after.projectId}`)
+  // Empty on a project with no open invoices yet — the payment then applies to
+  // the project as a whole exactly as it always has, and creditBalance never
+  // moves. Only projects using per-invoice allocation take the extra branch below.
+  const allocations: { invoiceId: string; amount: number }[] = after.allocations ?? []
+
   await db.runTransaction(async (tx: Transaction) => {
     const projectSnap = await tx.get(projectRef)
     if (!projectSnap.exists) return
     const project = projectSnap.data()!
+
+    const invoiceRefs = allocations.map((a) => db.doc(`project_documents/${a.invoiceId}`))
+    const invoiceSnaps = await Promise.all(invoiceRefs.map((ref) => tx.get(ref)))
+
     const receivedAmount = (project.receivedAmount ?? 0) + after.amount
     const outstandingAmount = Math.max(project.contractValue - receivedAmount, 0)
-    tx.update(projectRef, { receivedAmount, outstandingAmount, updatedAt: Timestamp.now() })
+    const allocatedTotal = allocations.reduce((sum, a) => sum + a.amount, 0)
+    const unallocated = allocations.length > 0 ? Math.max(after.amount - allocatedTotal, 0) : 0
+    const creditBalance = (project.creditBalance ?? 0) + unallocated
+
+    tx.update(projectRef, { receivedAmount, outstandingAmount, creditBalance, updatedAt: Timestamp.now() })
+
+    allocations.forEach((alloc, i) => {
+      const invoiceSnap = invoiceSnaps[i]
+      if (!invoiceSnap.exists) return
+      const invoice = invoiceSnap.data()!
+      const invReceived = (invoice.receivedAmount ?? 0) + alloc.amount
+      const invOutstanding = Math.max((invoice.invoiceAmount ?? 0) - invReceived, 0)
+      tx.update(invoiceRefs[i], { receivedAmount: invReceived, outstandingAmount: invOutstanding })
+    })
   })
 })
 
@@ -77,6 +99,22 @@ export const onBankTransactionWrite = onDocumentCreated('bank_transactions/{txnI
     const current = snap.data()!.currentBalance ?? 0
     const balanceAfter = txn.type === 'credit' ? current + txn.amount : current - txn.amount
     tx.update(accountRef, { currentBalance: balanceAfter })
+    tx.update(event.data!.ref, { balanceAfter })
+  })
+})
+
+// --- Cash ledger -> cash_accounts/main.currentBalance ---------------------------
+
+export const onCashTransactionWrite = onDocumentCreated('cash_transactions/{txnId}', async (event) => {
+  const txn = event.data?.data()
+  if (!txn) return
+
+  const accountRef = db.doc('cash_accounts/main')
+  await db.runTransaction(async (tx: Transaction) => {
+    const snap = await tx.get(accountRef)
+    const current = snap.exists ? (snap.data()!.currentBalance ?? 0) : 0
+    const balanceAfter = txn.type === 'credit' ? current + txn.amount : current - txn.amount
+    tx.set(accountRef, { currentBalance: balanceAfter }, { merge: true })
     tx.update(event.data!.ref, { balanceAfter })
   })
 })

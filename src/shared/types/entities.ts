@@ -22,6 +22,9 @@ export interface Company {
   defaultVatPercent: number
   address: string
   currency: 'LKR'
+  /** Admin-only toggle — when false (default), a payment that would take a
+   * bank/cash account below zero is blocked client-side rather than allowed. */
+  allowOverdraft?: boolean
 }
 
 export interface AppUser {
@@ -175,6 +178,10 @@ export interface Project {
   receivedAmount: number
   outstandingAmount: number
   overdueAmount: number
+  /** Unallocated portion of payments that exceeded the invoice(s) they were
+   * applied to — a deliberate credit, never silently folded into another
+   * invoice's balance. Derived (Functions-only), same as the fields above. */
+  creditBalance: number
   status: ProjectStatus
   closedAt?: Timestamp | null
   createdAt: Timestamp
@@ -193,6 +200,12 @@ export interface PaymentAttachment {
   uploadedDate: Timestamp
 }
 
+export interface PaymentAllocation {
+  invoiceId: string
+  invoiceNumber: string
+  amount: number
+}
+
 export interface ProjectPayment {
   projectId: string
   projectName?: string
@@ -209,6 +222,10 @@ export interface ProjectPayment {
   status: PaymentStatus
   expectedDate?: Timestamp | null
   attachments: PaymentAttachment[]
+  /** Which invoice(s) this payment settles, and how much of it went to each.
+   * Empty when the project has no open invoices yet — the payment then applies
+   * to the project as a whole, exactly as it always has (backward compatible). */
+  allocations: PaymentAllocation[]
   createdAt: Timestamp
 }
 
@@ -225,6 +242,10 @@ export interface ProjectDocument {
   invoiceNumber?: string
   invoiceDate?: Timestamp
   invoiceAmount?: number
+  /** Derived (Functions-only), type='invoice' docs only — sum of allocations against this invoice. */
+  receivedAmount?: number
+  /** Derived (Functions-only), type='invoice' docs only — invoiceAmount minus receivedAmount, floored at 0. */
+  outstandingAmount?: number
 }
 
 export interface Receipt {
@@ -289,6 +310,11 @@ export interface PurchaseOrder {
   subtotal: number
   grandTotal: number
   paymentMethod: PaymentMethod
+  /** Which bank account paid this PO — required when paymentMethod is bank_transfer,
+   * used to write the matching bank_transactions debit. */
+  bankAccountId?: string
+  vatOverridden?: boolean
+  vatOverrideReason?: string
   status: PurchaseOrderStatus
   date: Timestamp
   createdBy: string
@@ -306,13 +332,32 @@ export interface BankAccount {
   status: 'active' | 'inactive'
 }
 
-export type BankTransactionSource = 'project_payment' | 'po_payment' | 'cheque_clearance' | 'labour_payment' | 'manual_adjustment'
+export type BankTransactionSource = 'project_payment' | 'po_payment' | 'cheque_clearance' | 'labour_payment' | 'manual_adjustment' | 'bank_transfer'
 
 export interface BankTransaction {
   bankAccountId: string
   type: 'credit' | 'debit'
   amount: number
   source: BankTransactionSource
+  sourceRef?: string
+  transferId?: string
+  date: Timestamp
+  balanceAfter: number
+  createdBy: string
+}
+
+// --- Cash ledger — mirrors the bank ledger above, one singleton account -------
+
+export interface CashAccount {
+  currentBalance: number
+}
+
+export type CashTransactionSource = 'project_payment' | 'po_payment' | 'labour_payment' | 'manual_adjustment'
+
+export interface CashTransaction {
+  type: 'credit' | 'debit'
+  amount: number
+  source: CashTransactionSource
   sourceRef?: string
   date: Timestamp
   balanceAfter: number
