@@ -22,31 +22,28 @@ _Last updated: 2026-08-09_
 14. Dashboard real-data wiring (`useDashboardData.ts` replacing `mockData.ts`) — committed.
 15. **Reports & Analytics** (`src/features/reports/`) — 8 tabs (Overview/Income/Expenses/VAT/Suppliers/Debtors/Sites/Labour), a This Month/Last 3 Months/All Time range filter, `recharts` breakdown/comparison charts, and 4 downloadable reports (Financial Summary, Income Statement, Expense Statement, VAT Report) each exportable to PDF and Excel. Verified against the emulator with real data (e.g. All Time: LKR 525K income, LKR 115.4K expenses, matching the Dashboard's own numbers), zero console errors. Committed.
 
-**Not started:**
+**All planned build work is now done.** Only two user-side steps remain before the live system is actually usable end-to-end — see below.
 
-- Full hardening pass (see §2).
-- Final production redeploy.
+**Live deployment:** `watermansystem-48582` is fully deployed and live at **https://watermansystem-48582.web.app** — Hosting (latest build), Firestore rules/indexes, Storage rules, and all 9 Cloud Functions (`createUser`, `setUserRole`, `setUserActive`, `scanOverdue`, `onProjectPaymentWrite`, `onChequeStatusChange`, `onBankTransactionWrite`, `onPurchaseOrderWrite`, `onLabourPaymentWrite`). Verified with a Playwright smoke check against the live URL: login page renders correctly, zero console errors. Full authenticated smoke testing (creating real records end-to-end on production) is still blocked on the two items below.
 
-**Live deployment:** connected to the real Firebase project `watermansystem-48582` (Hosting + Firestore/Storage rules + Cloud Functions all deployed at least once). Two things remain blocked on the user, not on further coding:
+**Still blocked on the user — not on further coding:**
 
 - Enable the **Email/Password** sign-in provider: Firebase Console → Authentication → Sign-in method (no CLI equivalent).
 - Generate a service-account key (Console → Project Settings → Service Accounts → Generate new private key) and hand over its **local file path only** (never contents) so `scripts/seedProdAdmin.mjs` can bootstrap the first real Admin login.
 
-## 2. Remaining Work
-
-**Hardening pass — done:**
+## 2. Hardening Pass — Done
 
 - Firestore/Storage rules audited against the permission matrix for all 3 roles and every collection. Found and fixed one real gap: `labour_payments` create allowed `isAccountant()`, but accountants have only view access to Labour Management — only Admin/Manager should record payments (`firestore.rules`). Verified with a direct client-SDK rules test (bypassing the UI entirely) for both the fix and several other role/collection combinations, plus a live cross-role Playwright pass confirming nav visibility and route-level blocking match the matrix exactly.
 - PDF exports (`src/shared/lib/exporters.ts`) now carry a company-name header, a "Generated on" timestamp, alternating row shading, and a page-number footer instead of a bare title + table. Verified by inspecting the rendered PDF output directly.
 - Empty/loading states swept across every module — pages using the shared `DataTable` get this for free; the handful of custom card-based views (Debtors, Outstanding tabs, Pipeline, Documents) all already had their own inline guards. No gaps found.
 - Responsive check at a 390px mobile width found and fixed a real bug: the sidebar's mobile hamburger button only shrank it to the 76px desktop icon-rail (`sidebarCollapsed`), which still ate a third of the screen and clipped page content (confirmed on the quotation wizard). Sidebar is now a proper off-canvas drawer below the `lg` breakpoint with its own `mobileSidebarOpen` state, a tap-outside backdrop, and auto-close on navigation (`src/app/Sidebar.tsx`, `src/app/Topbar.tsx`, `src/app/providers/uiStore.ts`).
+- Production deploy itself surfaced one more real bug: `functions/lib` was stale (missing `index.js`/`triggers.js`, only had an old `admin.js`), which made `firebase deploy` time out trying to load the codebase. Fixed by adding a `predeploy: npm run build` hook to `firebase.json` so compiled output can never go stale again.
 
-**Still open, in priority order:**
+## 3. Remaining Work
 
-1. **Final production redeploy** — rebuild Hosting, redeploy Firestore rules/indexes, Storage rules, and all Cloud Functions now that the hardening pass (including the rules fix) is done.
-2. **User-blocked items** (see §1) — ping the user once ready to bootstrap production Admin login.
+Only the two user-blocked items above. Once those are done: run `npm run seed:prod-admin -- <email> <password> <path-to-service-account.json>` (or the equivalent documented in `scripts/seedProdAdmin.mjs`) and do a full authenticated smoke test on the live URL.
 
-## 3. Architecture
+## 4. Architecture
 
 - **Stack**: React 19 + TypeScript (strict, `erasableSyntaxOnly`) + Vite 8, Tailwind CSS v4 (CSS-first `@theme` config, `.dark` class toggle), `react-router` v8, Firebase modular SDK v9+ (Auth/Firestore/Storage/Functions), Cloud Functions v2 (Node 22, ESM).
 - **Folder layout**: feature-based, `src/features/<module>/` (each with `api.ts`, page component(s), `components/`); `src/shared/` for the cross-cutting component library (`components/`), hooks (`hooks/`), and libs (`lib/firebase.ts`, `currency.ts`, `permissions.ts`, `sequence.ts`, `exporters.ts`, `timeline.ts`); `src/app/` for routing, layout shell (Sidebar/Topbar), and providers (Auth, Theme, UI store).
@@ -60,7 +57,7 @@ _Last updated: 2026-08-09_
 - **Auth/permissions**: role (`admin | accountant | manager`) stored as a Firebase Auth custom claim (checked in Firestore rules via `request.auth.token.role`) and mirrored into `users/{uid}.role` for UI reads. The UI's own permission checks (`src/shared/lib/permissions.ts`) read the Firestore doc field, not the token claim — a nuance to remember if the two ever need to be kept in sync differently.
 - **Environments**: `.env` (gitignored) = emulator config, used by `npm run dev`. `.env.production` (gitignored) = real `watermansystem-48582` Firebase web config + `VITE_USE_FIREBASE_EMULATORS=false`, picked up automatically by `vite build`. `.firebaserc` has `default: demo-waterman-erp` (emulators) and `prod: watermansystem-48582` (used via explicit `--project` flag on deploy commands).
 
-## 4. Currently Hardcoded Values — What & How to Remove
+## 5. Currently Hardcoded Values — What & How to Remove
 
 | What | Where | How to fix later |
 |---|---|---|
