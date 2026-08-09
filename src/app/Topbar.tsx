@@ -11,7 +11,7 @@ import { ROLE_LABELS, type Role } from '@/shared/lib/permissions'
 import { cn } from '@/shared/lib/cn'
 
 export function Topbar() {
-  const { toggleSidebar } = useUiStore()
+  const { toggleMobileSidebar } = useUiStore()
   const { theme, toggleTheme } = useThemeStore()
   const { appUser, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -23,7 +23,7 @@ export function Topbar() {
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-[var(--border-default)] bg-[var(--bg-surface)] px-4">
       <div className="flex flex-1 items-center gap-3">
         <button
-          onClick={toggleSidebar}
+          onClick={toggleMobileSidebar}
           className="rounded-md p-2 text-[var(--text-muted)] hover:bg-[var(--bg-surface-muted)] lg:hidden"
           aria-label="Toggle sidebar"
         >
