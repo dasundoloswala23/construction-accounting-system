@@ -6,20 +6,30 @@ import { Card, StatusBadge, CurrencyText } from '@/shared/components'
 import type { Project } from '@/shared/types/entities'
 import { formatPercent } from '@/shared/lib/currency'
 
-export function CustomerOutstandingTab({ search }: { search: string }) {
+export function CustomerOutstandingTab({
+  search,
+  onlyOutstanding = false,
+  emptyMessage = 'No active projects yet.',
+}: {
+  search: string
+  onlyOutstanding?: boolean
+  emptyMessage?: string
+}) {
   const { data: projects, loading } = useCollection<Project>('projects', [])
   const navigate = useNavigate()
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return projects
-    return projects.filter(
-      (p) => p.projectName.toLowerCase().includes(q) || p.customer.companyName.toLowerCase().includes(q) || p.quotationNumber.toLowerCase().includes(q)
-    )
-  }, [projects, search])
+    return projects
+      .filter((p) => !onlyOutstanding || p.outstandingAmount > 0)
+      .filter(
+        (p) =>
+          !q || p.projectName.toLowerCase().includes(q) || p.customer.companyName.toLowerCase().includes(q) || p.quotationNumber.toLowerCase().includes(q)
+      )
+  }, [projects, search, onlyOutstanding])
 
   if (loading) return null
-  if (filtered.length === 0) return <p className="py-10 text-center text-sm text-[var(--text-muted)]">No active projects yet.</p>
+  if (filtered.length === 0) return <p className="py-10 text-center text-sm text-[var(--text-muted)]">{emptyMessage}</p>
 
   return (
     <div className="space-y-4">

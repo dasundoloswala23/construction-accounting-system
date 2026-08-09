@@ -16,6 +16,8 @@ import { IncomePage } from '@/features/income/IncomePage'
 import { LabourPage } from '@/features/labour/LabourPage'
 import { ChequeManagementPage } from '@/features/cheques/ChequeManagementPage'
 import { VatSuppliersPage } from '@/features/vat-suppliers/VatSuppliersPage'
+import { DebtorsPage } from '@/features/debtors/DebtorsPage'
+import { NotificationsPage } from '@/features/notifications/NotificationsPage'
 import { ComingSoon } from '@/shared/components'
 import type { ModuleKey } from '@/shared/lib/permissions'
 
@@ -120,7 +122,14 @@ export function AppRoutes() {
             </RequireModule>
           }
         />
-        <Route path="/debtors" element={<Placeholder title="Debtors" moduleKey="debtors" />} />
+        <Route
+          path="/debtors"
+          element={
+            <RequireModule moduleKey="debtors">
+              <DebtorsPage />
+            </RequireModule>
+          }
+        />
         <Route
           path="/cheques"
           element={
@@ -137,7 +146,14 @@ export function AppRoutes() {
             </RequireModule>
           }
         />
-        <Route path="/notifications" element={<Placeholder title="Notifications" moduleKey="notifications" />} />
+        <Route
+          path="/notifications"
+          element={
+            <RequireModule moduleKey="notifications">
+              <NotificationsPage />
+            </RequireModule>
+          }
+        />
         <Route path="/reports" element={<Placeholder title="Reports & Analytics" moduleKey="reports" />} />
         <Route
           path="/settings/*"
