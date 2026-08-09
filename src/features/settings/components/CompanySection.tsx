@@ -5,11 +5,11 @@ import { Building2, Upload } from 'lucide-react'
 import { useDocument } from '@/shared/hooks/useDocument'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { Card, CardHeader, CardBody, Button } from '@/shared/components'
-import { TextField, TextareaField } from '@/shared/components/form'
+import { TextField, TextareaField, CheckboxField } from '@/shared/components/form'
 import type { Company } from '@/shared/types/entities'
 import { updateCompany } from '../api'
 
-type CompanyForm = Pick<Company, 'name' | 'phone' | 'email' | 'tin' | 'defaultVatPercent' | 'address'> & {
+type CompanyForm = Pick<Company, 'name' | 'phone' | 'email' | 'tin' | 'defaultVatPercent' | 'address' | 'allowOverdraft'> & {
   logoURL?: string
 }
 
@@ -18,7 +18,7 @@ export function CompanySection() {
   const { uploadFile, uploading, progress } = useFileUpload()
 
   const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<CompanyForm>({
-    defaultValues: { name: '', phone: '', email: '', tin: '', defaultVatPercent: 18, address: '', logoURL: '' },
+    defaultValues: { name: '', phone: '', email: '', tin: '', defaultVatPercent: 18, address: '', logoURL: '', allowOverdraft: false },
   })
 
   useEffect(() => {
@@ -31,6 +31,7 @@ export function CompanySection() {
         defaultVatPercent: company.defaultVatPercent,
         address: company.address,
         logoURL: company.logoURL,
+        allowOverdraft: company.allowOverdraft ?? false,
       })
     }
   }, [company, reset])
@@ -39,7 +40,7 @@ export function CompanySection() {
 
   async function onSubmit(values: CompanyForm) {
     try {
-      await updateCompany({ ...values, defaultVatPercent: Number(values.defaultVatPercent), currency: 'LKR' })
+      await updateCompany({ ...values, logoURL: values.logoURL ?? '', defaultVatPercent: Number(values.defaultVatPercent), currency: 'LKR' })
       toast.success('Company details saved')
     } catch {
       toast.error('Could not save company details')
@@ -96,6 +97,14 @@ export function CompanySection() {
           </div>
 
           <TextareaField label="Address" {...register('address')} />
+
+          <div className="rounded-lg bg-[var(--bg-surface-muted)] p-3">
+            <CheckboxField
+              label="Allow overdraft (permit bank/cash payments that exceed the available balance)"
+              {...register('allowOverdraft')}
+            />
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Admin-only setting. When off, Purchase Orders, Labour payments, and bank transfers are blocked if the paying account can't cover the amount.</p>
+          </div>
 
           <div className="flex gap-3">
             <Button type="submit" loading={isSubmitting}>
