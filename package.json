@@ -1,5 +1,5 @@
 {
-  "name": "waterman-system",
+  "name": "construction-accounting-system",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,7 @@
     "emulators": "firebase emulators:start",
     "seed:admin": "node scripts/seedAdmin.mjs",
     "seed:prod-admin": "node scripts/seedProdAdmin.mjs",
-    "deploy:prod": "vite build && firebase deploy --project watermansystem-48582"
+    "deploy:prod": "vite build && firebase deploy --project construction-accounting-system"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",

@@ -1,6 +1,6 @@
 {
   "projects": {
     "default": "demo-waterman-erp",
-    "prod": "watermansystem-48582"
+    "prod": "construction-accounting-system"
   }
 }
