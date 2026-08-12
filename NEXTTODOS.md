@@ -1,6 +1,18 @@
 # Waterman Construction ERP — Next To-Dos, Architecture & Hardcoded Values
 
-_Last updated: 2026-08-09_
+_Last updated: 2026-08-12_
+
+## -2. Phase 4 — Full Feature Audit + Migration to `construction-accounting-system` (Done)
+
+Migrated this copy of the app to its own Firebase project (`construction-accounting-system`) and GitHub repo (`dasundoloswala23/construction-accounting-system`), deployed hosting/rules/indexes/all 10 functions, and seeded `doladasun3@gmail.com` as Admin. Then did the full authenticated smoke test §3 had been waiting on, driven with Playwright against the emulator suite.
+
+**Result: all 16 modules pass.** Every route renders with a clean console; master-data CRUD (sites, banks, suppliers, products, labour) creates and persists correctly with derived fields initialised; income (`project_payments`) credits the bank; labour payments update both worker balances and the bank. `ComingSoon` is dead code — no module is a stub.
+
+**One real bug found and fixed** (`src/features/purchase-orders/api.ts` + `functions/src/triggers.ts`): a PO paid by **cash or bank transfer** settles in the same write batch that creates it, but `createPurchaseOrder` always saved `status: 'pending'`, so `onPurchaseOrderWrite`'s "Created" branch *also* added the full `grandTotal` to `suppliers.outstandingBalance`. The money left the account **and** the supplier still showed as owed it; the only branch that reverses a payable fires on a `pending -> paid` change, which never happened for these POs. Now such POs are created `paid`, and the trigger skips the payable for a PO born paid. Cheques still stay pending until `onChequeStatusChange` clears them; credit POs are unaffected.
+
+**Two notes for later, not bugs:**
+- The emulator's functions runtime can fail its *first* invocation of a trigger (`Failed to load function`) and that event is lost with no retry, silently skewing a derived balance. Production (Eventarc) retries, so this is emulator-only — but it is worth knowing when a local balance looks wrong. Relatedly, `onPurchaseOrderWrite` swallows every failure via `.catch(() => undefined)`, so a genuinely failed aggregate update is invisible; consider logging instead.
+- `npm audit`: `xlsx` carries a **high** advisory (prototype pollution + ReDoS) with **no fix available** — the npm package is abandoned, SheetJS publishes patched builds on their own registry now. Only used to *write* exports (`src/shared/lib/exporters.ts`), never to parse untrusted files, so practical risk is low. The other 6 advisories are transitive under `firebase-admin`, which is a devDependency and never ships to the browser.
 
 ## -1. Phase 3 — Reports & Analytics Parity Upgrade (Done)
 
