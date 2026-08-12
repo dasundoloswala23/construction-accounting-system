@@ -11,13 +11,15 @@ import { useDashboardData } from './useDashboardData'
 export function DashboardPage() {
   const { appUser } = useAuth()
   const today = new Date()
+  const hour = today.getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const d = useDashboardData()
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Good morning, {appUser?.displayName?.split(' ')[0] ?? 'there'} 👋</h1>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{greeting}, {appUser?.displayName?.split(' ')[0] ?? 'there'} 👋</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>

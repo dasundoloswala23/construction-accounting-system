@@ -30,10 +30,19 @@ function computeTotals(lineItems: PurchaseOrderLineItem[], vatEnabled: boolean, 
   return { subtotal, grandTotal }
 }
 
-export async function createPurchaseOrder(input: POFormInput, createdBy: string, status: PurchaseOrderStatus = 'pending') {
+export async function createPurchaseOrder(input: POFormInput, createdBy: string, status?: PurchaseOrderStatus) {
   const lineItems = input.lineItems.map((li) => ({ ...li, total: li.qty * li.unitPrice }))
   const { subtotal, grandTotal } = computeTotals(lineItems, input.vatEnabled, input.vatPercent)
   const poNumber = await nextFormattedNumber('purchase_order', 'PO')
+
+  // Cash and bank transfers settle in this same batch (the debit rows below), so
+  // the PO is already paid the moment it is created. Leaving it 'pending' would
+  // make onPurchaseOrderWrite add it to the supplier's payables as well — money
+  // out of the account *and* still shown as owed. Cheques stay pending until
+  // onChequeStatusChange clears them; credit stays pending because it really is.
+  const settledOnCreate =
+    input.paymentMethod === 'cash' || (input.paymentMethod === 'bank_transfer' && !!input.bankAccountId)
+  const poStatus: PurchaseOrderStatus = status ?? (settledOnCreate ? 'paid' : 'pending')
 
   const batch = writeBatch(db)
   const poRef = doc(collection(db, 'purchase_orders'))
@@ -53,7 +62,7 @@ export async function createPurchaseOrder(input: POFormInput, createdBy: string,
     grandTotal,
     paymentMethod: input.paymentMethod,
     bankAccountId: input.paymentMethod === 'bank_transfer' ? (input.bankAccountId ?? '') : '',
-    status,
+    status: poStatus,
     date,
     createdBy,
   })

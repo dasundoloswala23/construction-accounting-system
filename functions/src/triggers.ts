@@ -127,10 +127,19 @@ export const onPurchaseOrderWrite = onDocumentWritten('purchase_orders/{poId}', 
 
   // Created
   if (after && !before) {
-    await Promise.all([
-      db.doc(`suppliers/${after.supplierId}`).update({ outstandingBalance: FieldValue.increment(after.grandTotal) }).catch(() => undefined),
+    const updates = [
       db.doc(`construction_sites/${after.constructionSiteId}`).update({ spentToDate: FieldValue.increment(after.grandTotal) }).catch(() => undefined),
-    ])
+    ]
+    // A PO created already 'paid' (cash / bank transfer) settled in the same
+    // batch that created it, so it never becomes a payable. Only the "Marked
+    // paid" branch below reverses a payable, and it cannot fire for a PO that
+    // was born paid — so the payable must never be added in the first place.
+    if (after.status !== 'paid') {
+      updates.push(
+        db.doc(`suppliers/${after.supplierId}`).update({ outstandingBalance: FieldValue.increment(after.grandTotal) }).catch(() => undefined)
+      )
+    }
+    await Promise.all(updates)
     return
   }
 
